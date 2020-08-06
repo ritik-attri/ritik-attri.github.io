@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <!--<link rel="stylesheet" href="/Users/ritik/Desktop/site.css">-->
+    <link rel="stylesheet" href="/Users/ritik/Desktop/sassysite.css">
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.11/paper-core.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.11/paper-full.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Rowdies:wght@300;400;700&display=swap" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <script type="text/paperscript" canvas="myCanvas">
+      // Code ported to Paper.js from http://the389.com/9/1/
+// with permission.
+
+var values = {
+	friction: 0.8,
+	timeStep: 0.01,
+	amount: 15,
+	mass: 2,
+	count: 0
+};
+values.invMass = 1 / values.mass;
+
+var path, springs;
+var size = view.size * [1.2, 1];
+
+var Spring = function(a, b, strength, restLength) {
+	this.a = a;
+	this.b = b;
+	this.restLength = restLength || 80;
+	this.strength = strength ? strength : 0.55;
+	this.mamb = values.invMass * values.invMass;
+};
+
+Spring.prototype.update = function() {
+	var delta = this.b - this.a;
+	var dist = delta.length;
+	var normDistStrength = (dist - this.restLength) /
+			(dist * this.mamb) * this.strength;
+	delta.y *= normDistStrength * values.invMass * 0.2;
+	if (!this.a.fixed)
+		this.a.y += delta.y;
+	if (!this.b.fixed)
+		this.b.y -= delta.y;
+};
+
+
+function createPath(strength) {
+	var path = new Path({
+		fillColor: 'black'
+	});
+	springs = [];
+	for (var i = 0; i <= values.amount; i++) {
+		var segment = path.add(new Point(i / values.amount, 0.5) * size);
+		var point = segment.point;
+		if (i == 0 || i == values.amount)
+			point.y += size.height;
+		point.px = point.x;
+		point.py = point.y;
+		// The first two and last two points are fixed:
+		point.fixed = i < 2 || i > values.amount - 2;
+		if (i > 0) {
+			var spring = new Spring(segment.previous.point, point, strength);
+			springs.push(spring);
+		}
+	}
+	path.position.x -= size.width / 4;
+	return path;
+}
+
+function onResize() {
+	if (path)
+		path.remove();
+	size = view.bounds.size * [2, 1];
+	path = createPath(0.1);
+}
+
+function onMouseMove(event) {
+	var location = path.getNearestLocation(event.point);
+	var segment = location.segment;
+	var point = segment.point;
+
+	if (!point.fixed && location.distance < size.height / 4) {
+		var y = event.point.y;
+		point.y += (y - point.y) / 6;
+		if (segment.previous && !segment.previous.fixed) {
+			var previous = segment.previous.point;
+			previous.y += (y - previous.y) / 24;
+		}
+		if (segment.next && !segment.next.fixed) {
+			var next = segment.next.point;
+			next.y += (y - next.y) / 24;
+		}
+	}
+}
+
+function onFrame(event) {
+	updateWave(path);
+}
+
+function updateWave(path) {
+	var force = 1 - values.friction * values.timeStep * values.timeStep;
+	for (var i = 0, l = path.segments.length; i < l; i++) {
+		var point = path.segments[i].point;
+		var dy = (point.y - point.py) * force;
+		point.py = point.y;
+		point.y = Math.max(point.y + dy, 0);
+	}
+
+	for (var j = 0, l = springs.length; j < l; j++) {
+		springs[j].update();
+	}
+	path.smooth({ type: 'continuous' });
+}
+
+function onKeyDown(event) {
+	if (event.key == 'space') {
+		path.fullySelected = !path.fullySelected;
+		path.fillColor = path.fullySelected ? null : 'black';
+	}
+}
+    
+    
+    </script>
+    <script type="text/paperscript" canvas="mySecondCanvas">
+      var Ball = function(point, vector) {
+        if (!vector || vector.isZero()) {
+          this.vector = Point.random() * 5;
+        } else {
+          this.vector = vector * 2;
+        }
+        this.point = point;
+        this.dampen = 0.4;
+        this.gravity = 3;
+        this.bounce = -0.6;
+      
+        var color = {
+          hue: Math.random() * 360,
+          saturation: 1,
+          brightness: 1
+        };
+        var gradient = new Gradient([color, 'black'], true);
+      
+        var radius = this.radius = 50 * Math.random() + 30;
+        // Wrap CompoundPath in a Group, since CompoundPaths directly 
+        // applies the transformations to the content, just like Path.
+        var ball = new CompoundPath({
+          children: [
+            new Path.Circle({
+              radius: radius
+            }),
+            new Path.Circle({
+              center: radius / 8,
+              radius: radius / 3
+            })
+          ],
+          fillColor: new Color(gradient, 0, radius, radius / 8),
+        });
+      
+        this.item = new Group({
+          children: [ball],
+          transformContent: false,
+          position: this.point
+        });
+      }
+      
+      Ball.prototype.iterate = function() {
+        var size = view.size;
+        this.vector.y += this.gravity;
+        this.vector.x *= 0.99;
+        var pre = this.point + this.vector;
+        if (pre.x < this.radius || pre.x > size.width - this.radius)
+          this.vector.x *= -this.dampen;
+        if (pre.y < this.radius || pre.y > size.height - this.radius) {
+          if (Math.abs(this.vector.x) < 3)
+            this.vector = Point.random() * [150, 100] + [-75, 20];
+          this.vector.y *= this.bounce;
+        }
+      
+        var max = Point.max(this.radius, this.point + this.vector);
+        this.item.position = this.point = Point.min(max, size - this.radius);
+        this.item.rotate(this.vector.x);
+      };
+      
+      
+      var balls = [];
+      for (var i = 0; i < 10; i++) {
+        var position = Point.random() * view.size,
+          vector = (Point.random() - [0.5, 0]) * [50, 100],
+          ball = new Ball(position, vector);
+        balls.push(ball);
+      }
+      
+      var textItem = new PointText({
+        point: [20, 30],
+        fillColor: 'black',
+        content: 'Click, drag and release to add balls.'
+      });
+      
+      var lastDelta;
+      function onMouseDrag(event) {
+        lastDelta = event.delta;
+      }
+      
+      function onMouseUp(event) {
+        var ball = new Ball(event.point, lastDelta);
+        balls.push(ball);
+        lastDelta = null;
+      }
+      
+      function onFrame() {
+        for (var i = 0, l = balls.length; i < l; i++)
+          balls[i].iterate();
+      }
+    
+    </script>
+    <script canvas="myThirdCanvas" type="text/paperscript">
+      // Ported from original Metaball script by SATO Hiroyuki
+      // http://park12.wakwak.com/~shp/lc/et/en_aics_script.html
+      project.currentStyle = {
+        fillColor: 'black'
+      };
+      
+      var ballPositions = [[255, 129], [610, 73], [486, 363],
+        [117, 459], [484, 726], [843, 306], [789, 615], [1049, 82],
+        [1292, 428], [1117, 733], [1352, 86], [92, 798]];
+      
+      var handle_len_rate = 2.4;
+      var circlePaths = [];
+      var radius = 50;
+      for (var i = 0, l = ballPositions.length; i < l; i++) {
+        var circlePath = new Path.Circle({
+          center: ballPositions[i],
+          radius: 50
+        });
+        circlePaths.push(circlePath);
+      }
+      
+      var largeCircle = new Path.Circle({
+        center: [676, 433],
+        radius: 100
+      });
+      circlePaths.push(largeCircle);
+      
+      function onMouseMove(event) {
+        largeCircle.position = event.point;
+        generateConnections(circlePaths);
+      }
+      
+      var connections = new Group();
+      function generateConnections(paths) {
+        // Remove the last connection paths:
+        connections.children = [];
+      
+        for (var i = 0, l = paths.length; i < l; i++) {
+          for (var j = i - 1; j >= 0; j--) {
+            var path = metaball(paths[i], paths[j], 0.5, handle_len_rate, 300);
+            if (path) {
+              connections.appendTop(path);
+              path.removeOnMove();
+            }
+          }
+        }
+      }
+      
+      generateConnections(circlePaths);
+      
+      // ---------------------------------------------
+      function metaball(ball1, ball2, v, handle_len_rate, maxDistance) {
+        var center1 = ball1.position;
+        var center2 = ball2.position;
+        var radius1 = ball1.bounds.width / 2;
+        var radius2 = ball2.bounds.width / 2;
+        var pi2 = Math.PI / 2;
+        var d = center1.getDistance(center2);
+        var u1, u2;
+      
+        if (radius1 == 0 || radius2 == 0)
+          return;
+      
+        if (d > maxDistance || d <= Math.abs(radius1 - radius2)) {
+          return;
+        } else if (d < radius1 + radius2) { // case circles are overlapping
+          u1 = Math.acos((radius1 * radius1 + d * d - radius2 * radius2) /
+              (2 * radius1 * d));
+          u2 = Math.acos((radius2 * radius2 + d * d - radius1 * radius1) /
+              (2 * radius2 * d));
+        } else {
+          u1 = 0;
+          u2 = 0;
+        }
+      
+        var angle1 = (center2 - center1).getAngleInRadians();
+        var angle2 = Math.acos((radius1 - radius2) / d);
+        var angle1a = angle1 + u1 + (angle2 - u1) * v;
+        var angle1b = angle1 - u1 - (angle2 - u1) * v;
+        var angle2a = angle1 + Math.PI - u2 - (Math.PI - u2 - angle2) * v;
+        var angle2b = angle1 - Math.PI + u2 + (Math.PI - u2 - angle2) * v;
+        var p1a = center1 + getVector(angle1a, radius1);
+        var p1b = center1 + getVector(angle1b, radius1);
+        var p2a = center2 + getVector(angle2a, radius2);
+        var p2b = center2 + getVector(angle2b, radius2);
+      
+        // define handle length by the distance between
+        // both ends of the curve to draw
+        var totalRadius = (radius1 + radius2);
+        var d2 = Math.min(v * handle_len_rate, (p1a - p2a).length / totalRadius);
+      
+        // case circles are overlapping:
+        d2 *= Math.min(1, d * 2 / (radius1 + radius2));
+      
+        radius1 *= d2;
+        radius2 *= d2;
+      
+        var path = new Path({
+          segments: [p1a, p2a, p2b, p1b],
+          style: ball1.style,
+          closed: true
+        });
+        var segments = path.segments;
+        segments[0].handleOut = getVector(angle1a - pi2, radius1);
+        segments[1].handleIn = getVector(angle2a + pi2, radius2);
+        segments[2].handleOut = getVector(angle2b - pi2, radius2);
+        segments[3].handleIn = getVector(angle1b + pi2, radius1);
+        return path;
+      }
+      
+      // ------------------------------------------------
+      function getVector(radians, length) {
+        return new Point({
+          // Convert radians to degrees:
+          angle: radians * 180 / Math.PI,
+          length: length
+        });
+      }
+    </script>
+    <script canvas="myFourthCanvas" type="text/paperscript">
+      var point = view.center;
+
+var colors = [];
+var cycles = 4;
+for (var i = 0, l = 60; i < l; i++) {
+	var brightness = 1 - (i / l) * 1.5;
+	var hue = i / l * cycles * 360;
+	var color = {
+		hue: hue,
+		saturation: 1,
+		brightness: brightness
+	};
+	colors.push(color);
+}
+
+var radius = Math.max(view.size.width, view.size.height) * 0.75;
+
+var path = new Path.Rectangle({
+	rectangle: view.bounds,
+	fillColor: {
+		origin: point,
+		destination: point + [radius, 0],
+		gradient: {
+			stops: colors,
+			radial: true
+		}
+	}
+});
+
+var color = path.fillColor;
+var gradient = color.gradient;
+var mouseDown = false;
+var mousePoint = view.center;
+
+function onMouseDown(event) {
+	mouseDown = true;
+	mousePoint = event.point;
+}
+
+function onMouseDrag(event) {
+	mousePoint = event.point;
+}
+
+function onMouseUp(event) {
+	vector.length = 10;
+	mouseDown = false;
+}
+
+var grow = false;
+var vector = new Point(150, 0);
+
+function onFrame() {
+	for (var i = 0, l = gradient.stops.length; i < l; i++)
+		gradient.stops[i].color.hue -= 20;
+	if (grow && vector.length > 300) {
+		grow = false;
+	} else if (!grow && vector.length < 75) {
+		grow = true;
+	}
+	if (mouseDown) {
+		point = point + (mousePoint - point) / 10;
+	} else {
+		vector.length += (grow ? 1 : -1);
+		vector.angle += 5;
+	}
+	color.highlight = mouseDown ? point : point + vector;
+}
+
+function onResize(event) {
+	point = view.center;
+	path.bounds = view.bounds;
+	var color = path.fillColor;
+	color.origin = point;
+	var radius = Math.max(view.size.width, view.size.height) * 0.75;
+	color.destination = point + [radius, 0];
+}
+    </script>
+    <script canvas="myFifthCanvas" type="text/paperscript">
+      // kynd.info 2014
+
+function Ball(r, p, v) {
+	this.radius = r;
+	this.point = p;
+	this.vector = v;
+	this.maxVec = 15;
+	this.numSegment = Math.floor(r / 3 + 2);
+	this.boundOffset = [];
+	this.boundOffsetBuff = [];
+	this.sidePoints = [];
+	this.path = new Path({
+		fillColor: {
+			hue: Math.random() * 360,
+			saturation: 1,
+			brightness: 1
+		},
+		blendMode: 'lighter'
+	});
+
+	for (var i = 0; i < this.numSegment; i ++) {
+		this.boundOffset.push(this.radius);
+		this.boundOffsetBuff.push(this.radius);
+		this.path.add(new Point());
+		this.sidePoints.push(new Point({
+			angle: 360 / this.numSegment * i,
+			length: 1
+		}));
+	}
+}
+
+Ball.prototype = {
+	iterate: function() {
+		this.checkBorders();
+		if (this.vector.length > this.maxVec)
+			this.vector.length = this.maxVec;
+		this.point += this.vector;
+		this.updateShape();
+	},
+
+	checkBorders: function() {
+		var size = view.size;
+		if (this.point.x < -this.radius)
+			this.point.x = size.width + this.radius;
+		if (this.point.x > size.width + this.radius)
+			this.point.x = -this.radius;
+		if (this.point.y < -this.radius)
+			this.point.y = size.height + this.radius;
+		if (this.point.y > size.height + this.radius)
+			this.point.y = -this.radius;
+	},
+
+	updateShape: function() {
+		var segments = this.path.segments;
+		for (var i = 0; i < this.numSegment; i ++)
+			segments[i].point = this.getSidePoint(i);
+
+		this.path.smooth();
+		for (var i = 0; i < this.numSegment; i ++) {
+			if (this.boundOffset[i] < this.radius / 4)
+				this.boundOffset[i] = this.radius / 4;
+			var next = (i + 1) % this.numSegment;
+			var prev = (i > 0) ? i - 1 : this.numSegment - 1;
+			var offset = this.boundOffset[i];
+			offset += (this.radius - offset) / 15;
+			offset += ((this.boundOffset[next] + this.boundOffset[prev]) / 2 - offset) / 3;
+			this.boundOffsetBuff[i] = this.boundOffset[i] = offset;
+		}
+	},
+
+	react: function(b) {
+		var dist = this.point.getDistance(b.point);
+		if (dist < this.radius + b.radius && dist != 0) {
+			var overlap = this.radius + b.radius - dist;
+			var direc = (this.point - b.point).normalize(overlap * 0.015);
+			this.vector += direc;
+			b.vector -= direc;
+
+			this.calcBounds(b);
+			b.calcBounds(this);
+			this.updateBounds();
+			b.updateBounds();
+		}
+	},
+
+	getBoundOffset: function(b) {
+		var diff = this.point - b;
+		var angle = (diff.angle + 180) % 360;
+		return this.boundOffset[Math.floor(angle / 360 * this.boundOffset.length)];
+	},
+
+	calcBounds: function(b) {
+		for (var i = 0; i < this.numSegment; i ++) {
+			var tp = this.getSidePoint(i);
+			var bLen = b.getBoundOffset(tp);
+			var td = tp.getDistance(b.point);
+			if (td < bLen) {
+				this.boundOffsetBuff[i] -= (bLen  - td) / 2;
+			}
+		}
+	},
+
+	getSidePoint: function(index) {
+		return this.point + this.sidePoints[index] * this.boundOffset[index];
+	},
+
+	updateBounds: function() {
+		for (var i = 0; i < this.numSegment; i ++)
+			this.boundOffset[i] = this.boundOffsetBuff[i];
+	}
+};
+
+//--------------------- main ---------------------
+
+var balls = [];
+var numBalls = 18;
+for (var i = 0; i < numBalls; i++) {
+	var position = Point.random() * view.size;
+	var vector = new Point({
+		angle: 360 * Math.random(),
+		length: Math.random() * 10
+	});
+	var radius = Math.random() * 60 + 60;
+	balls.push(new Ball(radius, position, vector));
+}
+
+function onFrame() {
+	for (var i = 0; i < balls.length - 1; i++) {
+		for (var j = i + 1; j < balls.length; j++) {
+			balls[i].react(balls[j]);
+		}
+	}
+	for (var i = 0, l = balls.length; i < l; i++) {
+		balls[i].iterate();
+	}
+}
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <nav id="navbar-example2" class="navbar navbar-light " style="background-color: rgb(219, 151, 143);">
+        <a class="navbar-brand" href="#" onclick="home_changer()"><span class="badge badge-primary" id="home_button">Home</span></a>
+        <ul class="nav nav-pills">
+          <li class="nav-item">
+            <a class="nav-link" href="#Aboutme" style="color:khaki; text-decoration: underline;"><span class="badge badge-secondary">About me</span></a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#ML_Projects" style="color:khaki;text-decoration: underline;"><span class="badge badge-secondary">ML_Projects</span></a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#DL_Projects" style="color:khaki;text-decoration: underline;"><span class="badge badge-secondary">DL_Projects</span></a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#Django_Projects" style="color:khaki;text-decoration: underline;"><span class="badge badge-secondary">Django Projects</span></a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#Web_Scraping_Projects" style="color:khaki;text-decoration: underline;"><span class="badge badge-secondary">Web Scraping Projects</span></a>
+          </li>
+        </ul>
+      </nav>
+      
+      <div class="jumbotron" id="top_pagee">
+        <div class="moving">
+          <h1 class="display-4">Hello, I'm Ritik Attri</h1>
+          <p class="lead">I'm currently pursuing my B.tech(ECE) at Bhagwan Parshuram Institute of Technology.</p>
+          <hr class="my-4">
+          <p>Okay this section was for hobbies but I don't have any expected/looked for hobbies but I am eager to learn stuff which looks like something I can have fun with even for a little amount of time.</p>
+          <p class="lead">
+            <a class="btn btn-primary btn-lg" href="#" role="button" onclick="buttontoggler()" id="puckyoubutton" >Learn more</a>
+          </p>
+        </div>
+      </div>
+      <a href="#top_pagee" class="btn btn-dark" id="up">To go up</a>
+      <div data-spy="scroll" data-target="#navbar-example2" data-offset=3>
+        <div id="ML_Projects">
+          <canvas id="myCanvas" resize="true" keepalive="true"></canvas> 
+          <div class="row" id="firstrow">
+            <div class="col-sm-6">
+              <div class="card">
+                <img class="card-img-top" src="https://vistapointe.net/images/regression-1.jpg" alt="Card image cap">
+                <div class="card-body">
+                  <h5 class="card-title">Linear Regression</h5>
+                  <a class="btn btn-primary" data-toggle="collapse" href="#collapseExampleofLR" role="button" aria-expanded="false" aria-controls="collapseExample">
+                    Want to see an example of <br>how linear regression works?
+                  </a>
+                  <div class="collapse" id="collapseExampleofLR">
+                    <p class="card-text" >Think you need to decide a price for your product and you have the knowledge of current market of your product. Lets take the 5 most important things that can set your product market and then we ask you to estimate the price of the product after you having the knowledge of the market and knowing how much each of the 5 factors influence the market. Thats what Linear Regression Model does for you. </p>
+                  </div>
+                  <a href="https://github.com/ritik-attri/ML-projects/blob/master/LinearRegression.html" class="btn btn-primary" id="cards-link">This is how a simple Liner Regression Model.</a>
+                </div>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <div class="card">
+                <img class="card-img-top" src="https://3qeqpr26caki16dnhd19sv6by6v-wpengine.netdna-ssl.com/wp-content/uploads/2020/04/Scatter-Plot-of-Dataset-With-Clusters-Identified-Using-K-Means-Clustering-1024x768.png" alt="Card image cap">
+                <div class="card-body">
+                  <h5 class="card-title">K-means Clustering</h5>
+                  <a class="btn btn-primary" data-toggle="collapse" href="#collapseExampleofKMC" role="button" aria-expanded="false" aria-controls="collapseExample">
+                    An example of K means clustering so<br> you don't bug me about this in an interview.
+                  </a>
+                  <div class="collapse" id="collapseExampleofKMC">
+                    <p class="card-text" >Lets suppose you are assigned to lead a huge project and have a huge number of people who work under you, and you know the 5 most important thing in your line of work any worker should have in his resume to know which team under you he/she shall be working with on projects for maximum efficiency. Now someone get a job under you and you need to assign him his group what will you do? You will try to match his traits with people already working there and then try to do your best in placing him in a group he would be most efficient working with, right? Thats what K-means clustering model does for you. </p>
+                  </div>
+                  <a href="https://github.com/ritik-attri/ML-projects/blob/master/KMC.html" class="btn btn-primary" id="cards-link">This is a simple KMC model</a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <canvas id="mySecondCanvas" resize="true" keepalive="true"></canvas>
+          <div class="row" id="secondrow">
+            <div class="col-sm-6">
+              <div class="card">
+                <img class="card-img-top" src="https://analyticsjobs.in/wp-content/uploads/2020/02/Calculate-the-Euclidean-distance-between-the-data-points.jpg" alt="Card image cap">
+                <div class="card-body">
+                  <h5 class="card-title">KNN</h5>
+                  <a class="btn btn-primary" data-toggle="collapse" href="#collapseExampleofKNN" role="button" aria-expanded="false" aria-controls="collapseExample">
+                    The working concept is similar to<br> that of K-Means Clustering.<br> Both of different purpose tho.
+                  </a>
+                  <div class="collapse" id="collapseExampleofKNN">
+                    <p class="card-text">Okay think you are a leader of a small group in which there are around 150-200 people yea don't get cocky tho, so you have a new participant now and you want to put him where he feels he belongs so you ask him 4-5 questions to judge his personality a little bit. Now you have asked these similar questions to everyone that joined your "small group" so you know what they all responded now you match his answers with everyone and then see which people have the closest answers to that and then you check in which group are the maximum people from and then you put him in that group, thats KNN for you.</p>
+                  </div>
+                  <a href="https://github.com/ritik-attri/ML-projects/blob/master/KNN.html" class="btn btn-primary" id="cards-link">Here's the link to a siimple KNN code.</a>
+                </div>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <div class="card">
+                <img class="card-img-top" src="https://miro.medium.com/max/6400/1*tYZ8_SodwSUPJTuWQs-CoA.jpeg" alt="Card image cap">
+                <div class="card-body">
+                  <h5 class="card-title">SVM</h5>
+                  <a class="btn btn-primary" data-toggle="collapse" href="#collapseExampleofSVM" role="button" aria-expanded="false" aria-controls="collapseExample">
+                    I would prefer you imagine Pirates of the Caribbean<br> Dead men tell no tails last scene in which<br> the ocean separates from between that helped me. 
+                  </a>
+                  <div class="collapse" id="collapseExampleofSVM">
+                    <p class="card-text">Lets assume you are your class monitor and your teacher tells you to divide the class in 2 teams to play antakshari. So you go ahead divide the class in 2 teams including yourself but then there is one kid thats left now since you have 2 teams completely separated with people who have in common or are friends you have that one kid to assign. So you look in which group he has more friends and the group he has more in common and assign it to that group.That's kind of like what SVM does.</p>
+                  </div>
+                  <a href="https://github.com/ritik-attri/ML-projects/blob/master/SVM.html" class="btn btn-primary" id="cards-link">Here's the link to an example of SVM</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="DL_Projects">
+          <canvas id="myThirdCanvas" resize="true" keepalive="true"></canvas>
+          <div class="col-sm-6" id="DL_can">
+            <div class="card">
+              <img class="card-img-top" src="https://miro.medium.com/max/2510/1*vkQ0hXDaQv57sALXAJquxA.jpeg" alt="Card image cap">
+              <div class="card-body">
+                <h5 class="card-title">CNN</h5>
+                <button class="btn btn-primary" data-toggle="collapse" type="button" data-target="#collapseExampleofCNN" role="button" >
+                  This actually goes for curves and lines in a photo and is<br> really helpful.To understand better click me!
+                </button>
+                <div class="collapse" id="collapseExampleofCNN">
+                  <p class="card-text">Okay think you are playing hide and seek with your friends. Now its your turn to play so you know how your friends look like obviously but your mind isn't really good at finding your friends when you are running and your vision is actually getting a little blurred because of running so fast. So if you had a better idea of how the person looks is he tall or short, is he slim or not that would really help ya if you are just trying to find the same face as your friends in the public to find him. So this is what CNN does and its very beneficial over other algorithms in recognising faces.</p>
+                </div>
+                <a href="https://github.com/ritik-attri/ML-projects/blob/master/happyorsad.html" class="btn btn-primary" id="cards-link">Here's the link to an example of CNN</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="Django_Projects">
+          <canvas id="myFourthCanvas" keepalive="true"></canvas>
+          <div class="col-sm-6" id="Django">
+            <div class="card">
+              <img class="card-img-top" src="https://static.djangoproject.com/img/desktops/djangodesktop-1680x1050.jpg" alt="Card image cap">
+              <div class="card-body">
+                <h5 class="card-title">Django Project</h5>
+                <a class="btn btn-primary" data-toggle="collapse" href="#collapseExampleofDJ" role="button" aria-expanded="false" aria-controls="collapseExampleofDJ">
+                  Django was a little tough at start but it has a lot<br> more easy to use functionality once you are familiar with<br> it. NodeJS is also cool but kind of tired of getting<br> and pushing requests.
+                </a>
+                <div class="collapse" id="collapseExampleofDJ">
+                  <p class="card-text">Okay working with Django felt like doing a project but throwing all the relevant notes all around the room and then using the most important ones when you learn how to use them. There are a lot of files to work with and none can work alone you need to learn them all to gain complete functionality.</p>
+                </div>
+                <a href="https://github.com/ritik-attri/django_project" class="btn btn-primary" id="cards-link">Here's the link to an example of Django Project</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="Web_Scraping_Projects" >
+          <canvas id="myFifthCanvas" keepalive="true"></canvas>
+          <div class="row" id="webscrapingfirstrow">
+          <div class="col-sm-6">
+            <div class="card">
+              <img class="card-img-top" src="https://miro.medium.com/max/2560/0*YMjcl6bP4mbVBrrx.jpeg" alt="Card image cap">
+              <div class="card-body">
+                <h5 class="card-title">Web Scraping Project Using Scrapy</h5>
+                <a class="btn btn-primary" data-toggle="collapse" href="#collapseExampleofScrapy" role="button" aria-expanded="false" aria-controls="collapseExampleofDJ">
+                  Scrapy is a python based framework, works really well till<br> you need something to interact with JS.
+                </a>
+                <div class="collapse" id="collapseExampleofScrapy">
+                  <p class="card-text">Scrapy is really good but the only problem I found was when I required to scrap websites which are loaded with JS. </p>
+                </div>
+                <a href="https://github.com/ritik-attri/Web-scraping-using-Scrapy" class="btn btn-primary" id="cards-link">Here's the link to my simple Scrapy project.</a>
+              </div>
+            </div>
+          </div>  
+          <div class="col-sm-6">
+            <div class="card">
+              <img class="card-img-top" src="https://i0.wp.com/wallpaperswide.com/download/programming-wallpaper-1920x1080.jpg?strip=all" alt="Card image cap">
+              <div class="card-body">
+                <h5 class="card-title">Web Scraping Project using Scrapy-Splash</h5>
+                <a class="btn btn-primary" data-toggle="collapse" href="#collapseExampleofSS" role="button" aria-expanded="false" aria-controls="collapseExampleofDJ">
+                  Same old scrapy but splash helps with the JS. 
+                </a>
+                <div class="collapse" id="collapseExampleofSS">
+                  <p class="card-text">Setting up splash takes a little amount of time but worth the wait, you can easily play with javascript finally.</p>
+                </div>
+                <a href="https://github.com/ritik-attri/Web-Scraping-using-Scrapy-Splash" class="btn btn-primary" id="cards-link">Here's the link to my Scrapy-splash projects.</a>
+              </div>
+            </div>
+          </div>
+          </div>
+        </div>
+      </div>
+    </div>
+</body>
+<script src="/Users/ritik/Desktop/site.js"></script>
+</html>

@@ -1,0 +1,124 @@
+* {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    box-sizing: border-box;
+  }
+  
+  .card {
+    width: 32rem;
+    height: 45rem;
+    margin: 2rem;
+    margin-left: 4rem;
+    transition: all 0.2s;
+  }
+  .card:hover {
+    box-shadow: 0px 10px 20px rgba(255, 215, 0, 0.8);
+    transform: translateY(-20px);
+  }
+  .card .collapse {
+    overflow-y: scroll;
+    width: 25rem;
+    height: 10rem;
+  }
+  
+  .nav-item .nav-link:hover {
+    background-color: gold;
+    border-radius: 100px;
+  }
+  
+  #top_pagee {
+    background-image: radial-gradient(circle farthest-side at 70% 70%, rgba(0, 0, 0, 0.2), rgba(150, 150, 150, 0.2)), url("https://media3.giphy.com/media/3oz8xur099boo4N9aU/giphy.gif?cid=ecf05e47g59iik5plpnpucpa4fclf0zsmhzg1opm9m9rbos5&rid=giphy.gif");
+    background-size: cover;
+    background-repeat: no-repeat;
+    left: 0;
+    bottom: 0;
+    height: 50vh;
+  }
+  #top_pagee .moving {
+    animation: Moveinfromleft 4s;
+    font-family: "Rowdies", cursive;
+    color: azure;
+  }
+  
+  @keyframes Moveinfromleft {
+    0% {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  #up{
+    position: fixed;
+    z-index: 1000;
+    margin-left: 87rem;
+    border-radius: 100px;
+    margin-top: 14rem;
+}
+#up:hover{
+    transform: translateY(-10px);
+    box-shadow: 0 10px 20px gold;
+}
+.card-img-top:hover{
+    transform: translateY(-10px);
+    box-shadow: 0 10px 20px purple;
+    transition: all .2s;
+}
+#myCanvas{
+  height: 120rem;
+  width: 100%;
+  z-index: -1;
+  color: brown;
+  -webkit-tap-highlight-color: brown;
+}
+#myCanvas[resize]{
+  width: 100%;
+  height: 60rem;
+}
+.row{
+  margin-top: -56rem;
+}
+#secondrow{
+  margin-top: -50rem;
+}
+#mySecondCanvas{
+  height: 60rem;
+  width: 100%;
+  z-index: -1;
+  color: brown;
+  -webkit-tap-highlight-color: brown;
+
+}
+#mySecondCanvas   [resize]{
+  width: 60rem;
+  height: 100%;
+}
+#webscrapingfirstrow{
+  margin-top: 70px;
+}
+#myThirdCanvas{
+  height: 60rem;
+  width: 100%;
+  z-index: -1;
+}
+#DL_can{
+  margin-top: -56rem;
+}
+#myFourthCanvas{
+  width: 100%;
+  height: 60rem;
+}
+#Django{
+  margin-top: -55rem;
+}
+#myFifthCanvas{
+  height: 60rem;
+  width: 100%;
+  margin-top: 5.5rem;
+}
+#webscrapingfirstrow{
+  margin-top: -50rem;
+}
